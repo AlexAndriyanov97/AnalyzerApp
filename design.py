@@ -96,7 +96,12 @@ class Ui_MainWindow(object):
             for j in range(len(df.columns)):
                 self.tableWidget_2.setItem(i, j, QTableWidgetItem(str(df.iat[i, j])))
         self.tableWidget_2.setHorizontalHeaderLabels(
-            ['Имя столбца', 'Частота встречаемости (%)', 'Средний процент плохих данных'])
+            ['Имя столбца', 'Частота встречаемости (%)', 'Средний процент плохих данных',
+             'Количество полностью плохих столбцов'])
+        header = self.tableWidget_2.horizontalHeader()
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
         self.tableWidget_2.resizeColumnsToContents()
         self.tableWidget_2.resizeRowsToContents()
 

@@ -22,6 +22,7 @@ class AnalyzerApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.pushButton.clicked.connect(self.browse_folder)  # Выполнить функцию browse_folder
         # при нажатии кнопки
         self.pushButton_2.clicked.connect(self.analyzer)
+        self.pushButton_3.clicked.connect(self.analyzer)
         self.checkBox.stateChanged.connect(self.clickBox)
         self.count_files = 0
         self.tableWidget.clicked.connect(self.on_click)
@@ -81,58 +82,75 @@ class AnalyzerApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.progressBar.setValue(0)
 
     def analyzer(self):
-        first_file = True
-        my_dict = {}
-        average_percent_bad_data = {}
-        bad_files = []
-        i = -1
+        self.tableWidget_2.clear()
+        self.first_file = True
+        self.my_dict = {}
+        self.average_percent_bad_data = {}
+        self.bad_columns = {}
+        self._final_stat = {}
+        itter = -1
         self.progressBar.setVisible(True)
         if self._directory:
-            for name in os.listdir(self._directory):
-                i += 1
-                self.progressBar.setValue(round(i / self.count_files * 100))
-                if self.tableWidget.item(i, 2).checkState():
-                    if os.path.isfile(os.path.join(self._directory, name)):
-                        try:
-                            las = lasio.read(self._directory + "/" + name)
-                        except ValueError:
-                            bad_files.append(name)
-                            self.tableWidget.setItem(i, 1, QTableWidgetItem('невозможно прочитать файл'))
-                            continue
-                        if first_file:
-                            my_dict = dict.fromkeys(las.keys(), 0)
-                            first_file = False
-                        count_NaN = las.df().isnull().sum()
-                        percent_bad_value = {}
-                        tmp = 0
-                        for item in las.df().keys():
-                            if item in my_dict:
-                                my_dict[item] += 1
-                            else:
-                                my_dict[item] = 1
-                            percent_bad_value[item] = round(count_NaN[item] / las[item].size * 100)
-                            if item in average_percent_bad_data.keys():
-                                average_percent_bad_data[item] += percent_bad_value[item]
-                            else:
-                                average_percent_bad_data[item] = 0
-                            tmp += percent_bad_value[item]
-                        percent_bad_value = dict(sorted(percent_bad_value.items(), key=lambda x: x[1], reverse=True))
-                        self._percent_bad_data[name] = percent_bad_value
-                        self.tableWidget.setItem(i, 1, QTableWidgetItem(str(round(tmp / len(percent_bad_value)))))
-                        self._detailed_dictionary[name] = las.df().describe()
-                        my_dict['DEPT'] += 1
-                else:
-                    continue
-            i += 1
-            for item in average_percent_bad_data.keys():
-                average_percent_bad_data[item] = round(average_percent_bad_data[item] / my_dict[item])
-                my_dict[item] = round(my_dict[item] / my_dict['DEPT'] * 100)
-                self._final_stat[item] = [item, my_dict[item], average_percent_bad_data[item]]
-            self._final_stat['DEPT'] = ['DEPT', 100, 0]
+            itter = self.read_files(itter)
+            itter += 1
+            self.update_global_statistic(itter)
 
-            self._final_stat = dict(sorted(self._final_stat.items(), key=lambda x: (x[1])[1], reverse=True))
+    def read_files(self, itter):
+        for name in os.listdir(self._directory):
+            itter += 1
+            if self.tableWidget.item(itter, 2).checkState():
+                self.progressBar.setValue(round(itter / self.count_files * 100))
+                if os.path.isfile(os.path.join(self._directory, name)):
+                    try:
+                        las = lasio.read(self._directory + "/" + name)
+                    except ValueError:
+                        self.tableWidget.setItem(itter, 1, QTableWidgetItem('невозможно прочитать файл'))
+                        continue
+                    if self.first_file:
+                        self.my_dict = dict.fromkeys(las.keys(), 0)
+                        self.first_file = False
+                    count_NaN = las.df().isnull().sum()
+                    percent_bad_value = {}
+                    tmp = 0
+                    for item in las.df().keys():
+                        if item in self.my_dict:
+                            self.my_dict[item] += 1
+                        else:
+                            self.my_dict[item] = 1
+                        percent_bad_value[item] = round(count_NaN[item] / las[item].size * 100)
+                        if percent_bad_value[item] == 100:
+                            if item in self.bad_columns:
+                                self.bad_columns[item] += 1
+                            else:
+                                self.bad_columns[item] = 1
+                        if item in self.average_percent_bad_data.keys():
+                            self.average_percent_bad_data[item] += percent_bad_value[item]
+                        else:
+                            self.average_percent_bad_data[item] = percent_bad_value[item]
+                        tmp += percent_bad_value[item]
+                    percent_bad_value = dict(sorted(percent_bad_value.items(), key=lambda x: x[1], reverse=True))
+                    self._percent_bad_data[name] = percent_bad_value
+                    self.tableWidget.setItem(itter, 1, QTableWidgetItem(str(round(tmp / len(percent_bad_value)))))
+                    self._detailed_dictionary[name] = las.df().describe()
+                    self.my_dict['DEPT'] += 1
+            else:
+                continue
+        return itter
+
+    def update_global_statistic(self, itter):
+        if len(self.average_percent_bad_data) != 0:
+            for item in self.average_percent_bad_data.keys():
+                self.average_percent_bad_data[item] = round(self.average_percent_bad_data[item] / self.my_dict[item])
+                self.my_dict[item] = str(self.my_dict[item]) + '/' + str(self.my_dict['DEPT']) + '(' + str(
+                    round(self.my_dict[item] / self.my_dict['DEPT'] * 100)) + '%)'
+                self._final_stat[item] = [item, self.my_dict[item], self.average_percent_bad_data[item],
+                                         self.bad_columns[item] if item in self.bad_columns else 0]
+            self._final_stat['DEPT'] = ['DEPT', str(self.my_dict['DEPT']) + '/' + str(self.my_dict['DEPT']) + '(' + str(
+                round(self.my_dict['DEPT'] / self.my_dict['DEPT'] * 100)) + '%)', 0, 0]
+            self._final_stat = dict(
+                sorted(self._final_stat.items(), key=lambda x: int(x[1][1][:x[1][1].find("/")]), reverse=True))
             self.drawTable(pd.DataFrame.from_dict(self._final_stat, orient='index'))
-            self.progressBar.setValue(round(i / self.count_files * 100))
+            self.progressBar.setValue(round(itter / self.count_files * 100))
 
 
 def main():

@@ -11,13 +11,11 @@ import os
 
 class AnalyzerApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def __init__(self):
-        # Это здесь нужно для доступа к переменным, методам
-        # и т.д. в файле design.py
         super().__init__()
         self._final_stat = {}
         self._detailed_dictionary = {}
         self._percent_bad_data = {}
-        self.setupUi(self)  # Это нужно для инициализации нашего дизайна
+        self.setupUi(self)
         self._directory = None
         self.pushButton.clicked.connect(self.browse_folder)  # Выполнить функцию browse_folder
         # при нажатии кнопки
@@ -53,8 +51,6 @@ class AnalyzerApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def browse_folder(self):
         tmp = self._directory
         self._directory = QtWidgets.QFileDialog.getExistingDirectory(self, "Выберите папку")
-        # открыть диалог выбора директории и установить значение переменной
-        # равной пути к выбранной директории
         self.tableWidget.setHorizontalHeaderLabels(["Имя", "Процент плохих данных", "Используемые файлы"])
         if self._directory == '':
             self._directory = tmp
@@ -69,7 +65,7 @@ class AnalyzerApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self._percent_bad_data = {}
             self._final_stat = {}
             for file_name in os.listdir(self._directory):  # для каждого файла в директории
-                self.tableWidget.setItem(iterration, 0, QTableWidgetItem(file_name))  # добавить файл в listWidget
+                self.tableWidget.setItem(iterration, 0, QTableWidgetItem(file_name))
                 self.tableWidget.setItem(iterration, 1, QTableWidgetItem(""))
                 chkBoxItem = QTableWidgetItem()
                 chkBoxItem.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
@@ -112,6 +108,7 @@ class AnalyzerApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     count_NaN = las.df().isnull().sum()
                     percent_bad_value = {}
                     tmp = 0
+                    print(las.df().index.name)
                     for item in las.df().keys():
                         if item in self.my_dict:
                             self.my_dict[item] += 1
@@ -144,7 +141,7 @@ class AnalyzerApp(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.my_dict[item] = str(self.my_dict[item]) + '/' + str(self.my_dict['DEPT']) + '(' + str(
                     round(self.my_dict[item] / self.my_dict['DEPT'] * 100)) + '%)'
                 self._final_stat[item] = [item, self.my_dict[item], self.average_percent_bad_data[item],
-                                         self.bad_columns[item] if item in self.bad_columns else 0]
+                                          self.bad_columns[item] if item in self.bad_columns else 0]
             self._final_stat['DEPT'] = ['DEPT', str(self.my_dict['DEPT']) + '/' + str(self.my_dict['DEPT']) + '(' + str(
                 round(self.my_dict['DEPT'] / self.my_dict['DEPT'] * 100)) + '%)', 0, 0]
             self._final_stat = dict(
